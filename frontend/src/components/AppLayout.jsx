@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Check, ChevronDown, LogOut, Moon, Sun, Zap } from 'lucide-react';
+import { Check, ChevronDown, LogOut, Moon, Sun } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 import { NAV_ITEMS } from '@/lib/nav';
 import { useAuth } from '@/lib/AuthContext';
 import { useHouseholdData } from '@/lib/HouseholdDataContext';
@@ -11,9 +12,7 @@ import { cn } from '@/lib/utils';
 function Logo({ compact = false }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#B7F34A] to-[#27AE83]">
-        <Zap className="h-5 w-5 text-[#101C2C]" strokeWidth={2.6} fill="#101C2C" />
-      </span>
+      <BrandMark className="h-10 w-10 shrink-0 object-contain" />
       {!compact && (
         <div className="leading-tight">
           <p className="font-heading text-[17px] font-extrabold tracking-tight">Energeia</p>

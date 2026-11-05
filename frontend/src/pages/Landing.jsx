@@ -7,8 +7,8 @@ import {
   Moon,
   Sparkles,
   Sun,
-  Zap,
 } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 import { useTheme } from '@/lib/theme';
 
 const FEATURES = [
@@ -36,9 +36,7 @@ export default function Landing() {
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#B7F34A] to-[#27AE83]">
-              <Zap className="h-4.5 w-4.5 text-[#101C2C]" strokeWidth={2.6} fill="#101C2C" />
-            </span>
+            <BrandMark className="h-9 w-9 object-contain" />
             <span className="font-heading text-[17px] font-extrabold tracking-tight">Energeia</span>
           </Link>
 

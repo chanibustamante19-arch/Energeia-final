@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import BrandMark from '@/components/BrandMark';
 
 export default function AuthShell({ title, subtitle, children, footer }) {
   return (
@@ -12,9 +13,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         <div className="pointer-events-none absolute right-20 top-1/3 h-44 w-44 rounded-full border border-white/[0.07]" />
 
         <Link to="/" className="relative flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#B7F34A] to-[#27AE83]">
-            <Zap className="h-5 w-5 text-[#101C2C]" fill="#101C2C" strokeWidth={2.4} />
-          </span>
+          <BrandMark className="h-10 w-10 object-contain" />
           <span className="font-heading text-lg font-extrabold tracking-tight">Energeia</span>
         </Link>
 
@@ -38,9 +37,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
       <div className="flex min-h-screen flex-col">
         <div className="flex items-center justify-between border-b border-border/60 bg-[#101C2C] px-5 py-3.5 text-white lg:hidden">
           <Link to="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#B7F34A] to-[#27AE83]">
-              <Zap className="h-4 w-4 text-[#101C2C]" fill="#101C2C" strokeWidth={2.4} />
-            </span>
+            <BrandMark className="h-8 w-8 object-contain" />
             <span className="font-heading text-[15px] font-extrabold">Energeia</span>
           </Link>
           <Link to="/" className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-white/60">
