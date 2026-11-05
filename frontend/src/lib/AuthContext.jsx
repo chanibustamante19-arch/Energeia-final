@@ -50,6 +50,26 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }, []);
 
+  const signInWithEmail = useCallback(async ({ email, password }) => {
+    const client = requireSupabase();
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }, []);
+
+  const signUpWithEmail = useCallback(async ({ email, password, fullName }) => {
+    const client = requireSupabase();
+    const { data, error } = await client.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName.trim() },
+        emailRedirectTo: `${window.location.origin}/overview`,
+      },
+    });
+    if (error) throw error;
+    return data;
+  }, []);
+
   const signOut = useCallback(async () => {
     const client = requireSupabase();
     const { error } = await client.auth.signOut({ scope: 'local' });
@@ -73,6 +93,8 @@ export function AuthProvider({ children }) {
         isLoadingAuth,
         authError,
         signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
         signOut,
         signOutEverywhere,
       }}

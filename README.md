@@ -20,7 +20,7 @@ Energeia is a responsive React/Vite app for household electricity monitoring. It
    npx supabase db push
    ```
 
-3. In Supabase **Authentication → Providers**, enable Google and configure its OAuth client credentials.
+3. In Supabase **Authentication → Providers**, enable Email for password-based accounts. Email addresses do not need to be Gmail addresses. You can also enable Google and configure its OAuth client credentials.
 4. Add the Supabase callback URL (`https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`) to the OAuth provider's allowed redirect URIs.
 5. In Supabase **Authentication → URL Configuration**, add the local and deployed app URLs as redirect URLs, including `http://localhost:5173/overview` and `https://YOUR_DOMAIN/overview`.
 6. Copy `.env.example` to `.env.local` and set the project URL and publishable/anon key. Never put a Supabase service-role key in the frontend.
