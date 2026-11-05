@@ -16,5 +16,5 @@ Energeia is a React/Vite frontend with Supabase Authentication and Postgres. Kee
 - Apply database changes as migrations under `backend/supabase/migrations/`.
 - The browser must use only the Supabase publishable/anon key; never expose a service-role key.
 - Use Supabase Auth and row-level security for user-scoped data.
-- Keep authentication, CRUD, and form errors visible to the user rather than silently falling back to sample data.
+- Keep authentication, CRUD, and form errors visible to the user rather than silently substituting fabricated records.
 - Run the relevant checks from `package.json` before finishing code changes.

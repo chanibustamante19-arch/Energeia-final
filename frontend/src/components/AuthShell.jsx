@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Quote, Zap } from 'lucide-react';
+import { ArrowLeft, Zap } from 'lucide-react';
 
 export default function AuthShell({ title, subtitle, children, footer }) {
   return (
@@ -31,37 +31,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
             Track appliance loads, forecast your bill and test schedule changes before you commit to them.
           </p>
 
-          <div className="mt-8 grid grid-cols-3 gap-2.5">
-            {[
-              { value: '431', unit: 'kWh', label: 'Tracked' },
-              { value: '₱5,389', unit: '', label: 'Forecast' },
-              { value: '8', unit: 'loads', label: 'Managed' },
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
-                <p className="font-heading text-lg font-extrabold leading-none">{stat.value}</p>
-                <p className="mt-1 text-[9.5px] font-bold uppercase tracking-[0.1em] text-white/40">
-                  {stat.unit || stat.label}
-                </p>
-                {stat.unit && (
-                  <p className="mt-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-white/25">
-                    {stat.label}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <Quote className="h-4 w-4 shrink-0 text-[#B7F34A]" />
-            <p className="text-[12px] leading-relaxed text-white/60">
-              “We found ₱900 of monthly savings in the first week — just from rescheduling two appliances.”
-            </p>
-          </div>
         </div>
-
-        <p className="relative mt-10 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/25">
-          Design prototype · sample data
-        </p>
       </aside>
 
       {/* Form panel */}
@@ -95,9 +65,6 @@ export default function AuthShell({ title, subtitle, children, footer }) {
 
             {footer && <div className="mt-6 text-center text-[12.5px] text-muted-foreground">{footer}</div>}
 
-            <p className="mt-8 text-center text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-              Design prototype · authentication is visual only
-            </p>
           </div>
         </main>
       </div>
