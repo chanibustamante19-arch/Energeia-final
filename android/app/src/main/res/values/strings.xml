@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Energeia</string>
+    <string name="title_activity_main">Energeia</string>
+    <string name="package_name">com.kevkyle.energeia</string>
+    <string name="custom_url_scheme">com.kevkyle.energeia</string>
+</resources>

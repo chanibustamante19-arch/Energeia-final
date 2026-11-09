@@ -1,13 +1,13 @@
 # Energeia
 
-Energeia is a mobile-focused household electricity tracking application. The current implementation is a responsive web app for recording and understanding electricity use: it combines appliance-based estimates with user-entered meter readings and bills, then presents history, cost estimates, recommendations, and what-if usage scenarios. An Android APK built through an Android Studio workflow is a planned delivery target, not a feature of the current repository yet.
+Energeia is a mobile-focused household electricity tracking application. The React/Vite web app records and helps users understand electricity use through appliance-based estimates, user-entered meter readings and bills, history, recommendations, and what-if usage scenarios. The repository includes a Capacitor Android project that can be opened in Android Studio and built into an APK.
 
-This README describes the system as currently implemented and identifies the planned Android packaging work separately. It is also intended as a technical reference for project and thesis documentation; calculations, implementation status, and limitations below should be reflected accurately in any academic description.
+This README describes the system as currently implemented and identifies remaining Android release work separately. It is also intended as a technical reference for project and thesis documentation; calculations, implementation status, and limitations below should be reflected accurately in any academic description.
 
 ## System at a glance
 
 - **Current application type:** Mobile-focused, responsive single-page web application (SPA).
-- **Planned delivery:** Android APK; Android packaging and native project setup are not yet present in this repository.
+- **Android delivery:** Capacitor Android project in `android/`; build and test APKs locally with Android Studio.
 - **Frontend:** React 18, Vite, JavaScript/JSX, Tailwind CSS, and Radix UI-based components.
 - **Navigation and charts:** React Router and Recharts.
 - **Backend services:** Supabase Authentication and Supabase-hosted PostgreSQL.
@@ -40,16 +40,30 @@ Authenticated routes are protected and redirect signed-out users to `/login`. Ho
 
 The selected household ID is stored in browser `localStorage` under `energeia-household-id`. This stores a selection only; authorization is enforced by Supabase policies, not by that local value.
 
-## Planned Android app
+## Android app (Capacitor)
 
-The project is intended to be used primarily on mobile, with an Android APK as a planned deliverable. The current React/Vite app is responsive and can be run in a mobile browser, but this repository does not yet contain an Android Studio project, Gradle build files, an APK, or Android-specific integration. The Vercel deployment described below is the web version, not an APK distribution.
+The Android app packages the existing React/Vite frontend in a Capacitor Android project; it is not a separate Kotlin or Jetpack Compose implementation. The Capacitor configuration is in `capacitor.config.ts`, and the Android Studio project and Gradle wrapper are in `android/`. The launcher icon uses `frontend/public/energeia-logo.png`.
 
-Before producing an APK, decide how the web frontend will be packaged:
+### Build a debug APK
 
-- **Capacitor (candidate for reusing this app):** packages the existing web build in an Android project that can be opened and built in Android Studio, with optional native plugins if device capabilities are later needed.
-- **Native Android rewrite:** rebuilds the interface using Android technologies such as Kotlin and Jetpack Compose; this is a separate implementation rather than packaging the current React UI.
+1. Create a root `.env.local` with the Supabase project URL and public/publishable key as described in [Local development](#local-development). Do not use a service-role key.
+2. From the repository root, build the web app and copy it into Android:
 
-If the team selects Capacitor, expected follow-up work includes adding and configuring the Android platform, checking mobile layouts and device behavior, configuring Android app identity and icons, testing authentication/OAuth redirects on a device, and setting up APK signing and release. A production APK should be built and tested from the generated Android project in Android Studio. These are future implementation tasks; no Android build commands or APK download are available from the current repository.
+   ```bash
+   npm run build
+   npx cap sync android
+   npx cap open android
+   ```
+
+3. Wait for Gradle sync in Android Studio. If prompted for a Gradle JDK, choose JDK 21 (or another version supported by the generated Gradle wrapper).
+4. In Android Studio, select **Build → Build Bundle(s) / APK(s) → Build APK(s)**. The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
+5. Install and test the APK on an emulator or Android device. Verify authentication, screen layouts, navigation, and the launcher icon.
+
+After changing frontend code or environment values, repeat `npm run build` and `npx cap sync android` before building another APK. Google OAuth may require additional Android redirect/deep-link configuration and should be tested separately.
+
+### Create a signed release APK
+
+For distribution, choose **Build → Generate Signed Bundle / APK → APK** in Android Studio and create or select a signing key. Keep the keystore and its passwords backed up securely; do not commit them to the repository. Test the signed APK before sharing or publishing it. The Vercel deployment described below remains the web version, not an APK distribution.
 
 ## Calculations and business rules
 
