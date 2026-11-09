@@ -1,17 +1,175 @@
 # Energeia
 
-Energeia is a responsive React/Vite app for household electricity monitoring. It uses Supabase Authentication and Postgres with row-level security.
+Energeia is a mobile-focused household electricity tracking application. The current implementation is a responsive web app for recording and understanding electricity use: it combines appliance-based estimates with user-entered meter readings and bills, then presents history, cost estimates, recommendations, and what-if usage scenarios. An Android APK built through an Android Studio workflow is a planned delivery target, not a feature of the current repository yet.
 
-## Project structure
+This README describes the system as currently implemented and identifies the planned Android packaging work separately. It is also intended as a technical reference for project and thesis documentation; calculations, implementation status, and limitations below should be reflected accurately in any academic description.
 
-- `frontend/` — Vite application, pages, components, and browser-side Supabase client.
-- `backend/supabase/migrations/` — database schema, constraints, RPCs, and RLS policies.
-- `package.json` — root scripts and shared frontend dependencies.
+## System at a glance
 
-## Supabase setup
+- **Current application type:** Mobile-focused, responsive single-page web application (SPA).
+- **Planned delivery:** Android APK; Android packaging and native project setup are not yet present in this repository.
+- **Frontend:** React 18, Vite, JavaScript/JSX, Tailwind CSS, and Radix UI-based components.
+- **Navigation and charts:** React Router and Recharts.
+- **Backend services:** Supabase Authentication and Supabase-hosted PostgreSQL.
+- **Data access:** Supabase JavaScript client, with user-scoped data protected by PostgreSQL row-level security (RLS).
+- **Current web deployment:** Configured for Vercel static hosting.
+- **Primary use:** Household-level electricity tracking and estimation. The app does not currently collect live readings from a physical meter or utility provider.
 
-1. Create a Supabase project.
-2. Apply [`202611050001_initial_schema.sql`](./backend/supabase/migrations/202611050001_initial_schema.sql) in the Supabase SQL Editor, or use the Supabase CLI from the backend folder:
+## User-facing features
+
+| Area | Route | What it does |
+| --- | --- | --- |
+| Landing and authentication | `/`, `/login`, `/register` | Introduces the app and supports email/password or Google sign-in through Supabase Auth. |
+| Overview dashboard | `/overview` | Summarizes estimated appliance consumption and cost, recent bills, readings, active schedules, usage trends, and recommendations. |
+| Appliances | `/appliances` | Adds and edits appliances, searches and filters the list, estimates monthly usage and cost, manages operating schedules, and archives appliances. |
+| Consumption and billing history | `/history` | Records daily readings and billing periods, distinguishes estimated and actual bills, and displays monthly consumption/cost comparisons. |
+| Energy insights | `/insights` | Shows rule-based runtime-reduction suggestions, filters them by impact, and lets a user dismiss or restore suggestions. |
+| Scenarios | `/scenarios` | Changes appliance runtime values in a what-if estimate and saves named scenarios without changing the saved appliance data. |
+| Settings | `/settings` | Edits profile and household details, provider and meter identifiers, billing cycle, electricity rate, appearance, and notification preferences. |
+
+Authenticated routes are protected and redirect signed-out users to `/login`. Household data is loaded after authentication and shared between screens through the household data context.
+
+## Typical data flow
+
+1. A user registers or signs in through Supabase Auth.
+2. A database trigger creates a profile, a default household, and an owner membership for a newly created auth user.
+3. The frontend loads the user's household memberships and profile, then loads that household's appliances, bills, readings, scenarios, and dismissed-insight keys.
+4. Users enter or edit records through the app. The frontend calls Supabase tables or database RPC functions using the configured public/publishable key and the signed-in session.
+5. PostgreSQL constraints validate stored values, and RLS policies restrict rows to the relevant user or household members.
+6. The app derives summaries, charts, estimated costs, scenarios, and recommendations from the stored records in the browser.
+
+The selected household ID is stored in browser `localStorage` under `energeia-household-id`. This stores a selection only; authorization is enforced by Supabase policies, not by that local value.
+
+## Planned Android app
+
+The project is intended to be used primarily on mobile, with an Android APK as a planned deliverable. The current React/Vite app is responsive and can be run in a mobile browser, but this repository does not yet contain an Android Studio project, Gradle build files, an APK, or Android-specific integration. The Vercel deployment described below is the web version, not an APK distribution.
+
+Before producing an APK, decide how the web frontend will be packaged:
+
+- **Capacitor (candidate for reusing this app):** packages the existing web build in an Android project that can be opened and built in Android Studio, with optional native plugins if device capabilities are later needed.
+- **Native Android rewrite:** rebuilds the interface using Android technologies such as Kotlin and Jetpack Compose; this is a separate implementation rather than packaging the current React UI.
+
+If the team selects Capacitor, expected follow-up work includes adding and configuring the Android platform, checking mobile layouts and device behavior, configuring Android app identity and icons, testing authentication/OAuth redirects on a device, and setting up APK signing and release. A production APK should be built and tested from the generated Android project in Android Studio. These are future implementation tasks; no Android build commands or APK download are available from the current repository.
+
+## Calculations and business rules
+
+### Appliance estimate
+
+For each active appliance, the estimated monthly energy use is:
+
+```text
+monthly kWh = wattage (W) * quantity * hours per day * 30 / 1000
+```
+
+The result is rounded to one decimal place. Estimated monthly cost per appliance is `monthly kWh * household rate per kWh`, rounded to the nearest whole currency unit in the displayed estimate. The dashboard totals the per-appliance estimates.
+
+These are estimates based on the entered rated wattage and daily runtime. They are not measurements of actual device consumption.
+
+### Bills and meter readings
+
+- A bill stores its billing-period dates, consumption, rate, estimated amount, and an optional actual amount.
+- The database derives bill status: no actual amount means `estimated`; a recorded actual amount means `actual`.
+- The estimated bill amount is calculated in the interface as `consumption kWh * rate per kWh`, rounded to a whole unit.
+- A household can have one bill per exact start/end date pair.
+- A household can have one daily reading per date. Saving another reading for the same date updates that entry.
+- Reading costs are optional. When an entry does not include a cost, summary views estimate it using the applicable household rate.
+
+### Historical summaries
+
+- Monthly charts cover the latest 12 calendar months.
+- Bills are grouped by their billing-period end date. If a month has one or more bills, the monthly series sums those bills and does not add that month's daily readings. Otherwise it sums the daily readings for the month.
+- For a bill with no actual amount, the historical cost series uses its estimated amount; otherwise it uses the actual amount.
+- The weekly dashboard series covers the latest seven days of daily readings.
+- These charts summarize records already entered; they do not forecast future usage.
+
+### Recommendations
+
+Insights are generated in the frontend from appliance records. For each appliance used more than one hour per day, the app estimates savings from reducing its runtime by one hour:
+
+```text
+suggested monthly kWh savings =
+  wattage * quantity * min(1, hours per day - 1) * 30 / 1000
+```
+
+The result is rounded to a whole kWh. Impact is labeled high at 25 kWh or more, medium at 10-24 kWh, and low below 10 kWh. Estimated cost savings use the household rate. Dismissal is saved per user and household.
+
+The insights are simple heuristics, not machine-learning predictions or personalized engineering recommendations. The insights screen also displays an annual CO2 reduction estimate using a hard-coded factor of `0.54 kg per kWh`; treat this as an illustrative application assumption, not a verified or configurable emissions factor.
+
+### Scenarios
+
+Scenario calculations substitute adjusted hours per day for the selected appliances, then reuse the appliance monthly-usage formula. They compare the result with the current appliance estimate and apply the configured household rate for an estimated cost impact. Saving or loading a scenario does not modify the underlying appliance runtimes.
+
+## Data model
+
+The initial schema is defined in [`backend/supabase/migrations/202611050001_initial_schema.sql`](./backend/supabase/migrations/202611050001_initial_schema.sql).
+
+| Table | Purpose and main relationships |
+| --- | --- |
+| `profiles` | User-specific profile details, currency, and notification preferences. Its primary key references the Supabase Auth user. |
+| `households` | Household name, occupant count, property and location details, provider/meter identifiers, billing-cycle day, electricity rate, and rate metadata. Records the creating auth user. |
+| `household_members` | Associates auth users with households and an `owner` or `member` role. The primary key is the household/user pair. |
+| `appliances` | Household appliances, including brand, category, wattage, quantity, hours per day, and optional archive timestamp. |
+| `appliance_schedules` | Schedule label, days, start/end time, and enabled state, linked to an appliance. These are stored schedule descriptions; they do not control physical devices. |
+| `bills` | Household billing periods, kWh, rate, estimated amount, optional actual amount, and generated status. Duplicate exact periods are prevented per household. |
+| `energy_readings` | Dated household consumption, optional cost and notes, source label, and creating user. A household/date pair is unique. |
+| `scenarios` | Named household what-if plans, notes, and JSON mapping of appliance IDs to adjusted runtime hours. |
+| `dismissed_insights` | Per-user, per-household record of dismissed insight keys. |
+
+The schema also defines helper functions for membership and ownership checks, a `create_household` RPC, a `save_household_appliance` RPC, a new-auth-user trigger, indexes for household/date lookups, and update timestamps for selected tables.
+
+## Authentication and data security
+
+- Supabase Auth handles email/password and Google OAuth sessions.
+- The browser uses only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the Supabase public/publishable key). Never expose a Supabase service-role key in the frontend or commit credentials.
+- RLS is enabled on all application tables in the initial migration.
+- Profiles are restricted to their owner. Household data is generally accessible to authenticated members of that household; household updates and deletion are owner-only.
+- Household appliance, schedule, bill, reading, and scenario policies verify membership. Readings and scenarios also associate writes with the authenticated user. Dismissed insights are user-specific.
+- The database applies data constraints such as valid non-negative rates/amounts, positive appliance wattage and quantity, runtime from 0 to 24 hours, valid billing periods, and bounded household/appliance names.
+- The schema supports household member roles, but the current interface does not provide a member invitation or management workflow.
+
+## Repository layout
+
+```text
+.
+|-- backend/
+|   `-- supabase/
+|       |-- config.toml
+|       `-- migrations/       # Versioned PostgreSQL schema and RLS
+|-- frontend/
+|   |-- public/               # Static assets
+|   `-- src/
+|       |-- api/              # Supabase client
+|       |-- components/       # Shared layout, forms, charts, and UI
+|       |-- lib/              # Auth/data contexts, energy calculations, utilities
+|       `-- pages/             # Route-level screens
+|-- .env.example
+|-- package.json
+`-- vercel.json
+```
+
+## Local development
+
+### Requirements
+
+- Node.js and npm compatible with the Vite version in `package.json`.
+- A Supabase project for authentication and persistent application data.
+
+### Install and configure
+
+1. Install dependencies from the repository root:
+
+   ```bash
+   npm install
+   ```
+
+2. Copy `.env.example` to `.env.local` in the repository root and fill in the project's values:
+
+   ```dotenv
+   VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+   VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+   ```
+
+3. Apply the database migration. With the Supabase CLI installed and authenticated:
 
    ```bash
    cd backend
@@ -20,37 +178,45 @@ Energeia is a responsive React/Vite app for household electricity monitoring. It
    npx supabase db push
    ```
 
-3. In Supabase **Authentication → Providers**, enable Email for password-based accounts. Email addresses do not need to be Gmail addresses. You can also enable Google and configure its OAuth client credentials.
-4. Add the Supabase callback URL (`https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`) to the OAuth provider's allowed redirect URIs.
-5. In Supabase **Authentication → URL Configuration**, add the local and deployed app URLs as redirect URLs, including `http://localhost:5173/overview` and `https://YOUR_DOMAIN/overview`.
-6. Copy `.env.example` to `.env.local` and set the project URL and publishable/anon key. Never put a Supabase service-role key in the frontend.
+   Alternatively, run the migration SQL in the Supabase SQL Editor.
 
-Google sign-in creates a profile and an initial household automatically. The schema enables RLS for profile, household, appliance/schedule, bill, reading, scenario, and dismissed-insight data. The app starts with empty records; add appliances, bills, and meter readings to populate estimates and charts.
+4. In Supabase Authentication settings, enable Email for password-based sign-in. Google sign-in is optional; if enabled, configure its OAuth credentials and add the Supabase callback URL (`https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`) to the OAuth provider's allowed redirect URIs.
+5. In Supabase Authentication URL Configuration, allow the local and deployed app URLs as redirects, including `http://localhost:5173/overview` and `https://YOUR_DOMAIN/overview`.
 
-## Local development
+### Start the app
 
 ```bash
-npm install
 npm run dev
 ```
 
-The app opens at `http://localhost:5173`. Without Supabase environment variables, the landing page remains available and sign-in explains the required setup.
+Open `http://localhost:5173`. Without Supabase environment variables, the landing page can be viewed, but authentication and household data require a configured Supabase project.
 
-## Deploy to Vercel
+## Build, checks, and deployment
 
-Import the repository with the repository root as the project root. Use:
-
-- Framework preset: **Vite**
-- Build command: `npm run build`
-- Output directory: `frontend/dist`
-- Install command: `npm install`
-
-Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as Vercel environment variables for each environment. The included `vercel.json` sends browser routes to the Vite entry page.
-
-## Checks
+Available root scripts:
 
 ```bash
 npm run lint
 npm run typecheck
 npm run build
+npm run preview
 ```
+
+For Vercel, import the repository with its root as the project root and configure:
+
+- Framework preset: **Vite**
+- Build command: `npm run build`
+- Output directory: `frontend/dist`
+- Install command: `npm install`
+- Environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+
+`vercel.json` rewrites browser routes to the Vite `index.html` entry point so client-side routes work when opened directly.
+
+## Current scope and limitations
+
+- Meter readings, bills, appliance data, and rates are entered by users; there is no live smart-meter, utility-provider, or billing-system integration.
+- Appliance usage and bill costs are estimates derived from user-provided inputs. Actual consumption and actual bill amounts must be recorded separately.
+- Schedules are descriptive data for display and planning; Energeia does not switch appliances on or off.
+- Recommendations use fixed rules and the CO2 display uses a fixed illustrative factor. They are not forecasts or professional energy audits.
+- Notification preferences can be stored, but this repository does not implement a notification delivery service.
+- The schema supports `manual`, `meter`, and `import` reading source labels, while the current reading form is a manual-entry workflow.
