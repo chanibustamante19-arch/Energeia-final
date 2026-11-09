@@ -1,12 +1,17 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { isSupabaseConfigured, requireSupabase } from '@/api/supabaseClient';
 
 const AuthContext = createContext(null);
+const NATIVE_AUTH_REDIRECT = 'com.kevkyle.energeia://auth/callback';
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(isSupabaseConfigured);
   const [authError, setAuthError] = useState(null);
+  const processedAuthUrls = useRef(new Set());
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
@@ -41,13 +46,98 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isSupabaseConfigured || !Capacitor.isNativePlatform()) return undefined;
+
+    let active = true;
+    let appUrlListener;
+    const client = requireSupabase();
+
+    const handleAuthUrl = async (url) => {
+      let callbackUrl;
+      try {
+        callbackUrl = new URL(url);
+      } catch {
+        return;
+      }
+
+      if (
+        callbackUrl.protocol !== 'com.kevkyle.energeia:'
+        || callbackUrl.hostname !== 'auth'
+        || callbackUrl.pathname !== '/callback'
+        || processedAuthUrls.current.has(url)
+      ) {
+        return;
+      }
+      processedAuthUrls.current.add(url);
+
+      try {
+        const callbackError = callbackUrl.searchParams.get('error_description')
+          || callbackUrl.searchParams.get('error');
+        if (callbackError) throw new Error(callbackError);
+
+        const code = callbackUrl.searchParams.get('code');
+        if (!code) throw new Error('Google sign-in did not return an authorization code.');
+
+        const { error } = await client.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+        setAuthError(null);
+      } catch (error) {
+        console.error('Unable to complete native Google sign-in:', error);
+        setAuthError(error.message || 'Unable to complete Google sign-in.');
+      } finally {
+        try {
+          await Browser.close();
+        } catch (error) {
+          console.warn('Unable to close the Google sign-in browser:', error);
+        }
+      }
+    };
+
+    const handleAppUrl = ({ url }) => {
+      handleAuthUrl(url);
+    };
+
+    App.addListener('appUrlOpen', handleAppUrl)
+      .then((listener) => {
+        if (!active) {
+          listener.remove();
+          return;
+        }
+        appUrlListener = listener;
+        return App.getLaunchUrl();
+      })
+      .then((launchUrl) => {
+        if (active && launchUrl?.url) return handleAuthUrl(launchUrl.url);
+        return undefined;
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error('Unable to initialize native sign-in callback handling:', error);
+        setAuthError(error.message || 'Unable to initialize Google sign-in.');
+      });
+
+    return () => {
+      active = false;
+      if (appUrlListener) appUrlListener.remove();
+    };
+  }, []);
+
   const signInWithGoogle = useCallback(async () => {
     const client = requireSupabase();
-    const { error } = await client.auth.signInWithOAuth({
+    const isNative = Capacitor.isNativePlatform();
+    const { data, error } = await client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/overview` },
+      options: {
+        redirectTo: isNative ? NATIVE_AUTH_REDIRECT : `${window.location.origin}/overview`,
+        skipBrowserRedirect: isNative,
+      },
     });
     if (error) throw error;
+    if (isNative) {
+      if (!data.url) throw new Error('Supabase did not return a Google sign-in URL.');
+      await Browser.open({ url: data.url });
+    }
   }, []);
 
   const signInWithEmail = useCallback(async ({ email, password }) => {

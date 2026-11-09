@@ -59,7 +59,7 @@ The Android app packages the existing React/Vite frontend in a Capacitor Android
 4. In Android Studio, select **Build → Build Bundle(s) / APK(s) → Build APK(s)**. The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
 5. Install and test the APK on an emulator or Android device. Verify authentication, screen layouts, navigation, and the launcher icon.
 
-After changing frontend code or environment values, repeat `npm run build` and `npx cap sync android` before building another APK. Google OAuth may require additional Android redirect/deep-link configuration and should be tested separately.
+After changing frontend code or environment values, repeat `npm run build` and `npx cap sync android` before building another APK. Native Google sign-in opens the provider in the system browser and returns to the app through the `com.kevkyle.energeia://auth/callback` deep link. Add this exact URL to Supabase **Authentication → URL Configuration → Redirect URLs**. Keep the Google OAuth provider's authorized redirect URI set to the Supabase callback URL (`https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`). Test the sign-in and return-to-app flow on a device.
 
 ### Create a signed release APK
 
